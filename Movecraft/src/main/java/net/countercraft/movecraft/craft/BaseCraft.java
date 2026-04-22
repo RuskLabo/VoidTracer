@@ -43,7 +43,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 
 import static net.countercraft.movecraft.util.SignUtils.getFacing;
 
@@ -132,10 +131,6 @@ public abstract class BaseCraft implements Craft {
 
     @NotNull
     public World getWorld() {
-        if (WorldManager.INSTANCE.isRunning() && !Bukkit.isPrimaryThread()) {
-            var exception = new Throwable("Invoking most methods on worlds while the world manager is running WILL cause deadlock.");
-            Bukkit.getLogger().log(Level.SEVERE, exception, exception::getMessage);
-        }
         return w;
     }
 
@@ -353,7 +348,22 @@ public abstract class BaseCraft implements Craft {
         if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN)
             return ((int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_TICK_COOLDOWN, w) + chestPenalty) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
 
+        // Dynamic Speed Weight & Redstone Boost
+        double boostFactor = type.getDoubleProperty(CraftType.REDSTONE_SPEED_BOOST);
+        double weightFactor = type.getDoubleProperty(CraftType.SPEED_WEIGHT_FACTOR);
+        if (boostFactor != 0 || weightFactor != 0) {
+            double baseSpeed = 20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1.0) / (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
+            double redstoneCount = materials.get(Material.REDSTONE_BLOCK);
+            double totalBlocks = hitBox.size();
+
+            double speed = baseSpeed + (redstoneCount * boostFactor) - (totalBlocks * weightFactor);
+            speed = Math.max(0.1, speed); // 最低速度を保証
+
+            return Math.max((int) Math.round((20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1)) / speed) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1), 1);
+        }
+
         // Dynamic Fly Block Speed
+
         int cruiseTickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
         if (type.getDoubleProperty(CraftType.DYNAMIC_FLY_BLOCK_SPEED_FACTOR) != 0) {
             if (materials.isEmpty()) {

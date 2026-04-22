@@ -102,10 +102,14 @@ public final class CachedMovecraftWorld implements MovecraftWorld{
         if((test = chunkCache.get(chunkLocation)) != null){
             return test;
         }
-        test = WorldManager.INSTANCE.executeMain(() -> {
+        test = WorldManager.INSTANCE.executeRegion(
+                world,
+                chunkLocation.getX(),
+                chunkLocation.getZ(),
+                () -> {
             AsyncChunk<?> temp;
             if((temp = chunkCache.get(chunkLocation)) != null) return temp;
-            return AsyncChunk.of(world.getChunkAt(location.toBukkit(world)));
+            return AsyncChunk.of(world.getChunkAt(chunkLocation.getX(), chunkLocation.getZ()));
         });
         var previous = chunkCache.putIfAbsent(chunkLocation, test);
         return previous == null ? test : previous;

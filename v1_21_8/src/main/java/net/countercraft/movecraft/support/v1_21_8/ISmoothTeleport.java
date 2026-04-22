@@ -4,12 +4,12 @@ import io.papermc.paper.entity.TeleportFlag;
 import net.countercraft.movecraft.SmoothTeleport;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.jetbrains.annotations.NotNull;
 
 public class ISmoothTeleport extends SmoothTeleport {
     public void teleport(@NotNull Player player, @NotNull Location location) {
-        player.teleport(
-                location,
+        TeleportFlag[] flags = new TeleportFlag[]{
                 TeleportFlag.Relative.VELOCITY_X,//x
                 TeleportFlag.Relative.VELOCITY_Y,//y
                 TeleportFlag.Relative.VELOCITY_Z,//z
@@ -18,6 +18,7 @@ public class ISmoothTeleport extends SmoothTeleport {
                 TeleportFlag.EntityState.RETAIN_OPEN_INVENTORY,
                 TeleportFlag.EntityState.RETAIN_VEHICLE,
                 TeleportFlag.EntityState.RETAIN_PASSENGERS
-        );
+        };
+        player.teleportAsync(location, TeleportCause.PLUGIN, flags);
     }
 }

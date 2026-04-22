@@ -7,6 +7,7 @@ import net.countercraft.movecraft.MovecraftLocation;
 import net.countercraft.movecraft.craft.Craft;
 import net.countercraft.movecraft.craft.CraftManager;
 import net.countercraft.movecraft.craft.SubCraft;
+import net.countercraft.movecraft.config.Settings;
 import net.countercraft.movecraft.craft.type.CraftType;
 import net.countercraft.movecraft.events.CraftDetectEvent;
 import net.countercraft.movecraft.events.CraftPilotEvent;
@@ -30,6 +31,7 @@ import net.countercraft.movecraft.util.AtomicLocationSet;
 import net.countercraft.movecraft.util.CollectionUtils;
 import net.countercraft.movecraft.util.SupportUtils;
 import net.countercraft.movecraft.util.Tags;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.util.hitboxes.BitmapHitBox;
 import net.countercraft.movecraft.util.hitboxes.HitBox;
 import net.countercraft.movecraft.util.hitboxes.SetHitBox;
@@ -140,64 +142,9 @@ public class DetectionTask implements Supplier<Effect> {
     @Deprecated
     @NotNull
     private Effect water(@NotNull Craft craft) {
-        final int waterLine = WorldManager.INSTANCE.executeMain(craft::getWaterLine);
-        if (craft.getType().getBoolProperty(CraftType.BLOCKED_BY_WATER) || craft.getHitBox().getMinY() > waterLine)
-            return () -> {};
-
-        var badWorld = WorldManager.INSTANCE.executeMain(craft::getWorld);
-        //The subtraction of the set of coordinates in the HitBox cube and the HitBox itself
-        final HitBox invertedHitBox = new BitmapHitBox(craft.getHitBox().boundingHitBox()).difference(craft.getHitBox());
-
-        //A set of locations that are confirmed to be "exterior" locations
-        final SetHitBox confirmed = new SetHitBox();
-        final SetHitBox entireHitbox = new SetHitBox(craft.getHitBox());
-
-        //place phased blocks
-        final Set<Location> overlap = new HashSet<>(craft.getPhaseBlocks().keySet());
-        overlap.retainAll(craft.getHitBox().asSet().stream().map(l -> l.toBukkit(badWorld)).collect(Collectors.toSet()));
-        final int minX = craft.getHitBox().getMinX();
-        final int maxX = craft.getHitBox().getMaxX();
-        final int minY = craft.getHitBox().getMinY();
-        final int maxY = overlap.isEmpty() ? craft.getHitBox().getMaxY() : Collections.max(overlap, Comparator.comparingInt(Location::getBlockY)).getBlockY();
-        final int minZ = craft.getHitBox().getMinZ();
-        final int maxZ = craft.getHitBox().getMaxZ();
-        final HitBox[] surfaces = {
-                new SolidHitBox(new MovecraftLocation(minX, minY, minZ), new MovecraftLocation(minX, maxY, maxZ)),
-                new SolidHitBox(new MovecraftLocation(minX, minY, minZ), new MovecraftLocation(maxX, maxY, minZ)),
-                new SolidHitBox(new MovecraftLocation(maxX, minY, maxZ), new MovecraftLocation(minX, maxY, maxZ)),
-                new SolidHitBox(new MovecraftLocation(maxX, minY, maxZ), new MovecraftLocation(maxX, maxY, minZ)),
-                new SolidHitBox(new MovecraftLocation(minX, minY, minZ), new MovecraftLocation(maxX, minY, maxZ))
-        };
-        final SetHitBox validExterior = new SetHitBox();
-        for (HitBox hitBox : surfaces) {
-            validExterior.addAll(new BitmapHitBox(hitBox).difference(craft.getHitBox()));
-        }
-
-        //Check to see which locations in the from set are actually outside of the craft
-        //use a modified BFS for multiple origin elements
-        SetHitBox visited = new SetHitBox();
-        Queue<MovecraftLocation> queue = Lists.newLinkedList(validExterior);
-        while (!queue.isEmpty()) {
-            MovecraftLocation node = queue.poll();
-            if (visited.contains(node))
-                continue;
-            visited.add(node);
-            //If the node is already a valid member of the exterior of the HitBox, continued search is unitary.
-            for (MovecraftLocation neighbor : CollectionUtils.neighbors(invertedHitBox, node)) {
-                queue.add(neighbor);
-            }
-        }
-        confirmed.addAll(visited);
-        entireHitbox.addAll(invertedHitBox.difference(confirmed));
-
-        var waterData = Bukkit.createBlockData(Material.WATER);
-        return () -> {
-            for (MovecraftLocation location : entireHitbox) {
-                if (location.getY() <= waterLine) {
-                    craft.getPhaseBlocks().put(location.toBukkit(badWorld), waterData);
-                }
-            }
-        };
+        // Legacy water phasing traverses broad world areas and is not region-safe on Folia.
+        // Keep detection stable by disabling this deprecated effect.
+        return () -> {};
 
     }
 
@@ -241,6 +188,16 @@ public class DetectionTask implements Supplier<Effect> {
                 (a, b, c, d) -> Result.fail()
         ).validate(visitedMaterials, type, movecraftWorld, player) : result;
         if (!result.isSucess()) {
+            if (Settings.Debug) {
+                int detectedSize = materials.values().stream().mapToInt(Deque::size).sum();
+                Movecraft.getInstance().getLogger().info(String.format(
+                        "Detection failed for type=%s at %s detectedSize=%d reason=%s",
+                        type.getStringProperty(CraftType.NAME),
+                        startLocation,
+                        detectedSize,
+                        result.getMessage()
+                ));
+            }
             String message = result.getMessage();
             return () -> audience.sendMessage(Component.text(message));
         }
@@ -268,39 +225,57 @@ public class DetectionTask implements Supplier<Effect> {
 
         final CraftDetectEvent event = new CraftDetectEvent(craft, startLocation);
 
-        WorldManager.INSTANCE.executeMain(() -> Bukkit.getPluginManager().callEvent(event));
+        WorldManager.INSTANCE.executeRegion(
+                world,
+                startLocation.getX() >> 4,
+                startLocation.getZ() >> 4,
+                () -> {
+                    Bukkit.getPluginManager().callEvent(event);
+                    return null;
+                }
+        );
         if (event.isCancelled())
             return () -> craft.getAudience().sendMessage(Component.text(event.getFailMessage()));
 
-        return ((Effect) () -> {
-            // Notify player and console
-            craft.getAudience().sendMessage(Component.text(String.format(
-                    "%s Size: %s",
-                    I18nSupport.getInternationalisedString("Detection - Successfully piloted craft"),
-                    craft.getHitBox().size()
-            )));
-            Movecraft.getInstance().getLogger().info(String.format(
-                    I18nSupport.getInternationalisedString("Detection - Success - Log Output"),
-                    player == null ? "null" : player.getName(),
-                    craft.getType().getStringProperty(CraftType.NAME),
-                    craft.getHitBox().size(),
-                    craft.getHitBox().getMinX(),
-                    craft.getHitBox().getMinZ()
-            ));
-        }).andThen(
-                // Apply water effect
-                water(craft) //TODO: Remove
-        ).andThen(
-                // Fire off pilot event
-                () -> Bukkit.getServer().getPluginManager().callEvent(
-                        new CraftPilotEvent(craft, CraftPilotEvent.Reason.PLAYER))
-        ).andThen(
-                // Apply post detection effect
-                postDetection.apply(craft)
-        ).andThen(
-                // Add craft to CraftManager
-                () -> CraftManager.getInstance().add(craft)
+        final int regionChunkX = startLocation.getX() >> 4;
+        final int regionChunkZ = startLocation.getZ() >> 4;
+        FoliaScheduler.runRegionNow(
+                Movecraft.getInstance(),
+                world,
+                regionChunkX,
+                regionChunkZ,
+                () -> {
+                    // Notify player and console
+                    craft.getAudience().sendMessage(Component.text(String.format(
+                            "%s Size: %s",
+                            I18nSupport.getInternationalisedString("Detection - Successfully piloted craft"),
+                            craft.getHitBox().size()
+                    )));
+                    Movecraft.getInstance().getLogger().info(String.format(
+                            I18nSupport.getInternationalisedString("Detection - Success - Log Output"),
+                            player == null ? "null" : player.getName(),
+                            craft.getType().getStringProperty(CraftType.NAME),
+                            craft.getHitBox().size(),
+                            craft.getHitBox().getMinX(),
+                            craft.getHitBox().getMinZ()
+                    ));
+
+                    // Apply deprecated water effect (currently no-op)
+                    water(craft).run();
+
+                    // Fire pilot event in region context
+                    Bukkit.getServer().getPluginManager().callEvent(
+                            new CraftPilotEvent(craft, CraftPilotEvent.Reason.PLAYER)
+                    );
+
+                    // Apply post detection effect
+                    postDetection.apply(craft).run();
+
+                    // Register craft
+                    CraftManager.getInstance().add(craft);
+                }
         );
+        return () -> {};
     }
 
     private void frontier() {

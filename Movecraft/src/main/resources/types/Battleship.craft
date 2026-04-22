@@ -1,7 +1,7 @@
-name: BigAirship
-maxSize: 20000
-minSize: 10000
-allowedBlocks:
+name: Battleship
+maxSize: 12000
+minSize: 5000
+allowedBlocks: 
     - "#planks"
     - water
     - lava
@@ -97,18 +97,17 @@ forbiddenBlocks:
 
 canCruise: true
 rotateAtMidpoint: true
-blockRemoteRotate: true
 canFly: true
-maxHeightLimit: 110
+maxHeightLimit: 135
 maxHeightAboveGround: 50
-vertCruiseSkipBlocks: 4
+vertCruiseSkipBlocks: 3
 collisionExplosion: 0.0
-speed: 0.3
 detectionMultiplier: 10.0
 underwaterDetectionMultiplier: 1.0
-cruiseSkipBlocks: 12
-cruiseSpeed: 0.3
-fuelBurnRate: 4.0
+speed: 1.0
+cruiseSkipBlocks: 4
+cruiseSpeed: 0.5
+fuelBurnRate: 2.0
 sinkPercent: 99.0
 overallSinkPercent: 60.0
 tryNudge: false

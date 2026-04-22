@@ -2,7 +2,7 @@ package net.countercraft.movecraft.processing.effects;
 
 import net.countercraft.movecraft.Movecraft;
 import net.countercraft.movecraft.processing.WorldManager;
-import org.bukkit.scheduler.BukkitRunnable;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -21,12 +21,7 @@ public class DeferredEffect implements Effect {
     
     @Override
     public void run() {
-        new BukkitRunnable(){
-            @Override
-            public void run() {
-                WorldManager.INSTANCE.submit(() -> effect);
-            }
-        }.runTaskLaterAsynchronously(Movecraft.getInstance(), delayTicks);
+        FoliaScheduler.runAsyncLater(Movecraft.getInstance(), () -> WorldManager.INSTANCE.submit(() -> effect), delayTicks);
     }
 
     @Override

@@ -6,10 +6,10 @@
 package net.countercraft.movecraft.mapUpdater.update;
 
 import net.countercraft.movecraft.Movecraft;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Objects;
 
@@ -37,13 +37,19 @@ public class ItemDropUpdateCommand extends UpdateCommand {
     public void doUpdate() {
         if (itemStack != null) {
             final World world = location.getWorld();
-            // drop Item
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    world.dropItemNaturally(ItemDropUpdateCommand.this.location, itemStack);
-                }
-            }.runTaskLater(Movecraft.getInstance(), 20);
+            if (world == null) {
+                return;
+            }
+            int chunkX = location.getBlockX() >> 4;
+            int chunkZ = location.getBlockZ() >> 4;
+            FoliaScheduler.runRegionLater(
+                    Movecraft.getInstance(),
+                    world,
+                    chunkX,
+                    chunkZ,
+                    () -> world.dropItemNaturally(ItemDropUpdateCommand.this.location, itemStack),
+                    20L
+            );
         }
     }
 

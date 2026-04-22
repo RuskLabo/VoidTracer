@@ -30,13 +30,12 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 
-public abstract class AsyncTask extends BukkitRunnable {
+public abstract class AsyncTask implements Runnable {
     protected final Craft craft;
 
     protected AsyncTask(Craft c) {

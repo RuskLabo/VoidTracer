@@ -1,9 +1,12 @@
 package net.countercraft.movecraft.mapUpdater.update;
 
+import net.countercraft.movecraft.Movecraft;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.config.Settings;
 import net.countercraft.movecraft.events.ExplosionEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.util.Objects;
 
@@ -35,6 +38,23 @@ public class ExplosionUpdateCommand extends UpdateCommand {
 
     @Override
     public void doUpdate() {
+        World world = explosionLocation.getWorld();
+        if (world == null) {
+            return;
+        }
+        int chunkX = explosionLocation.getBlockX() >> 4;
+        int chunkZ = explosionLocation.getBlockZ() >> 4;
+        if (!FoliaScheduler.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    world,
+                    chunkX,
+                    chunkZ,
+                    this::doUpdate
+            );
+            return;
+        }
+
         ExplosionEvent e = new ExplosionEvent(explosionLocation, explosionStrength, incendiary);
         Bukkit.getServer().getPluginManager().callEvent(e);
         if(e.isCancelled())

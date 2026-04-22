@@ -18,6 +18,7 @@ import net.countercraft.movecraft.events.SignTranslateEvent;
 import net.countercraft.movecraft.util.CollectionUtils;
 import net.countercraft.movecraft.util.MathUtils;
 import net.countercraft.movecraft.util.Tags;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.util.hitboxes.HitBox;
 import net.countercraft.movecraft.util.hitboxes.SetHitBox;
 import net.countercraft.movecraft.util.hitboxes.SolidHitBox;
@@ -68,6 +69,19 @@ public class CraftRotateCommand extends UpdateCommand {
         if (craft.getHitBox().isEmpty()) {
             logger.warning("Attempted to move craft with empty HashHitBox!");
             CraftManager.getInstance().release(craft, CraftReleaseEvent.Reason.EMPTY, false);
+            return;
+        }
+        MovecraftLocation midpoint = craft.getHitBox().getMidPoint();
+        int chunkX = midpoint.getX() >> 4;
+        int chunkZ = midpoint.getZ() >> 4;
+        if (!FoliaScheduler.isOwnedByCurrentRegion(craft.getWorld(), chunkX, chunkZ)) {
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    craft.getWorld(),
+                    chunkX,
+                    chunkZ,
+                    this::doUpdate
+            );
             return;
         }
         long time = System.nanoTime();

@@ -15,6 +15,7 @@ import net.countercraft.movecraft.events.CraftPilotEvent;
 import net.countercraft.movecraft.events.CraftReleaseEvent;
 import net.countercraft.movecraft.localisation.I18nSupport;
 import net.countercraft.movecraft.processing.functions.Result;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.util.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -30,7 +31,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -132,13 +132,14 @@ public final class CraftSign implements Listener {
                         craft.setCruising(true);
 
                         // Stop craft cruising and sink it in 15 seconds
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                craft.setCruising(false);
-                                CraftManager.getInstance().sink(craft);
-                            }
-                        }.runTaskLater(Movecraft.getInstance(), (craftType.getIntProperty(CraftType.CRUISE_ON_PILOT_LIFETIME)));
+                        FoliaScheduler.runGlobalLater(
+                                Movecraft.getInstance(),
+                                () -> {
+                                    craft.setCruising(false);
+                                    CraftManager.getInstance().sink(craft);
+                                },
+                                craftType.getIntProperty(CraftType.CRUISE_ON_PILOT_LIFETIME)
+                        );
                     }
                     else {
                         // Release old craft if it exists
@@ -148,11 +149,6 @@ public final class CraftSign implements Listener {
                     }
                 }
         );
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                piloting.remove(startPoint);
-            }
-        }.runTaskLater(Movecraft.getInstance(), 4);
+        FoliaScheduler.runGlobalLater(Movecraft.getInstance(), () -> piloting.remove(startPoint), 4L);
     }
 }

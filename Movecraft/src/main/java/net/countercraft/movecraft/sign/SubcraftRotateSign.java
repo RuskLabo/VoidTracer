@@ -9,6 +9,7 @@ import net.countercraft.movecraft.events.CraftPilotEvent;
 import net.countercraft.movecraft.events.CraftReleaseEvent;
 import net.countercraft.movecraft.localisation.I18nSupport;
 import net.countercraft.movecraft.processing.functions.Result;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.util.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -22,7 +23,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -82,12 +82,7 @@ public final class SubcraftRotateSign implements Listener {
                 return;
             }
             playerCraft.setProcessing(true); // prevent the parent craft from moving or updating until the subcraft is done
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    playerCraft.setProcessing(false);
-                }
-            }.runTaskLater(Movecraft.getInstance(), (10));
+            FoliaScheduler.runGlobalLater(Movecraft.getInstance(), () -> playerCraft.setProcessing(false), 10L);
         }
 
         rotating.add(startPoint);
@@ -115,26 +110,22 @@ public final class SubcraftRotateSign implements Listener {
                         parent.setHitBox(newHitbox);
                     }
 
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            craft.rotate(rotation, startPoint, true);
-                            if (craft instanceof SubCraft) {
-                                Craft parent = ((SubCraft) craft).getParent();
-                                var newHitbox = parent.getHitBox().union(craft.getHitBox());
-                                parent.setHitBox(newHitbox);
-                            }
-                            CraftManager.getInstance().release(craft, CraftReleaseEvent.Reason.SUB_CRAFT, false);
-                        }
-                    }.runTaskLater(Movecraft.getInstance(), 3);
+                    FoliaScheduler.runGlobalLater(
+                            Movecraft.getInstance(),
+                            () -> {
+                                craft.rotate(rotation, startPoint, true);
+                                if (craft instanceof SubCraft) {
+                                    Craft parent = ((SubCraft) craft).getParent();
+                                    var newHitbox = parent.getHitBox().union(craft.getHitBox());
+                                    parent.setHitBox(newHitbox);
+                                }
+                                CraftManager.getInstance().release(craft, CraftReleaseEvent.Reason.SUB_CRAFT, false);
+                            },
+                            3L
+                    );
                 }
         );
         event.setCancelled(true);
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                rotating.remove(startPoint);
-            }
-        }.runTaskLater(Movecraft.getInstance(), 4);
+        FoliaScheduler.runGlobalLater(Movecraft.getInstance(), () -> rotating.remove(startPoint), 4L);
     }
 }

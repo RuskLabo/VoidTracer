@@ -31,10 +31,10 @@ import net.countercraft.movecraft.craft.SinkingCraft;
 import net.countercraft.movecraft.craft.type.CraftType;
 import net.countercraft.movecraft.events.CraftReleaseEvent;
 import net.countercraft.movecraft.mapUpdater.MapUpdateManager;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.kyori.adventure.text.Component;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -47,7 +47,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 @Deprecated
-public class AsyncManager extends BukkitRunnable {
+public class AsyncManager {
     private final Map<AsyncTask, Craft> ownershipMap = new HashMap<>();
     private final BlockingQueue<AsyncTask> finishedAlgorithms = new LinkedBlockingQueue<>();
     private final Set<Craft> clearanceSet = new HashSet<>();
@@ -59,7 +59,16 @@ public class AsyncManager extends BukkitRunnable {
         if (c.isNotProcessing()) {
             c.setProcessing(true);
             ownershipMap.put(task, c);
-            task.runTask(Movecraft.getInstance());
+            MovecraftLocation midpoint = c.getHitBox().isEmpty()
+                    ? new MovecraftLocation(0, 0, 0)
+                    : c.getHitBox().getMidPoint();
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    c.getWorld(),
+                    midpoint.getX() >> 4,
+                    midpoint.getZ() >> 4,
+                    task
+            );
         }
     }
 

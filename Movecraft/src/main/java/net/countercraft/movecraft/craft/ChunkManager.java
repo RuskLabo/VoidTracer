@@ -4,44 +4,45 @@ import net.countercraft.movecraft.Movecraft;
 import net.countercraft.movecraft.MovecraftChunk;
 import net.countercraft.movecraft.MovecraftLocation;
 import net.countercraft.movecraft.config.Settings;
-import org.bukkit.Bukkit;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 
 @Deprecated
 public class ChunkManager implements Listener {
     
-    private static final Set<MovecraftChunk> chunks = new HashSet<>();
+    private static final Set<MovecraftChunk> chunks = ConcurrentHashMap.newKeySet();
     
     public static void addChunksToLoad(Iterable<MovecraftChunk> list) {
         
         for (MovecraftChunk chunk : list) {
             if (chunks.add(chunk)) {
-                if (!chunk.isLoaded()) {
-                    chunk.toBukkit().load(true);
-                }
+                FoliaScheduler.runRegionNow(
+                        Movecraft.getInstance(),
+                        chunk.getWorld(),
+                        chunk.getX(),
+                        chunk.getZ(),
+                        () -> {
+                            if (!chunk.getWorld().isChunkLoaded(chunk.getX(), chunk.getZ())) {
+                                chunk.getWorld().getChunkAt(chunk.getX(), chunk.getZ()).load(true);
+                            }
+                        }
+                );
             }
             
         }
         
         // remove chunks after 10 seconds
-        new BukkitRunnable() {
-
-            @Override
-            public void run() {
-                ChunkManager.removeChunksToLoad(list);
-            }
-            
-        }.runTaskLaterAsynchronously(Movecraft.getInstance(), 200L);
+        FoliaScheduler.runAsyncLater(Movecraft.getInstance(), () -> ChunkManager.removeChunksToLoad(list), 200L);
     }
     
     private static void removeChunksToLoad(Iterable<MovecraftChunk> list) {
@@ -88,14 +89,8 @@ public class ChunkManager implements Listener {
     public static Future<Boolean> syncLoadChunks(Set<MovecraftChunk> chunks) {
         if (Settings.Debug)
             Movecraft.getInstance().getLogger().info("Loading " + chunks.size() + " chunks...");
-        if(Bukkit.isPrimaryThread()){
-            ChunkManager.addChunksToLoad(chunks);
-            return CompletableFuture.completedFuture(true);
-        }
-        return Bukkit.getScheduler().callSyncMethod(Movecraft.getInstance(), () -> {
-            ChunkManager.addChunksToLoad(chunks);
-            return true;
-        });
+        ChunkManager.addChunksToLoad(chunks);
+        return CompletableFuture.completedFuture(true);
     }
     
 }

@@ -3,10 +3,14 @@ plugins {
 }
 
 repositories {
-    mavenLocal()
     maven("https://repo.maven.apache.org/maven2/")
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.papermc.io/repository/maven-public/")
+    // Opt-in local repository usage; keeping it disabled by default avoids
+    // Gradle resolving partial metadata/artifacts from ~/.m2 and getting stuck there.
+    if (providers.gradleProperty("useMavenLocal").orNull == "true") {
+        mavenLocal()
+    }
 }
 
 group = "net.countercraft"

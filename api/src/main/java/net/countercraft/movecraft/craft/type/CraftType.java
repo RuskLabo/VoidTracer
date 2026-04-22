@@ -190,6 +190,8 @@ final public class CraftType {
     public static final NamespacedKey EXPLOSION_ARMING_TIME = buildKey("explosion_arming_time");
     public static final NamespacedKey DIRECTIONAL_DEPENDENT_MATERIALS = buildKey("directional_dependent_materials");
     public static final NamespacedKey ALLOW_INTERNAL_COLLISION_EXPLOSION = buildKey("allow_internal_collision_explosion");
+    public static final NamespacedKey REDSTONE_SPEED_BOOST = buildKey("redstone_speed_boost");
+    public static final NamespacedKey SPEED_WEIGHT_FACTOR = buildKey("speed_weight_factor");
     //endregion
 
     @Contract("_ -> new")
@@ -576,6 +578,8 @@ final public class CraftType {
         registerProperty(new IntegerProperty("cruiseOnPilotLifetime", CRUISE_ON_PILOT_LIFETIME, type -> 15*20));
         registerProperty(new IntegerProperty("explosionArmingTime", EXPLOSION_ARMING_TIME, type -> 1000));
         registerProperty(new BooleanProperty("allowInternalCollisionExplosion", ALLOW_INTERNAL_COLLISION_EXPLOSION, type -> false));
+        registerProperty(new DoubleProperty("redstoneSpeedBoost", REDSTONE_SPEED_BOOST, type -> 0D));
+        registerProperty(new DoubleProperty("speedWeightFactor", SPEED_WEIGHT_FACTOR, type -> 0D));
 
         /* Craft type transforms */
         // Convert speed to TICK_COOLDOWN

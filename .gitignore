@@ -199,3 +199,4 @@ gradle-app.setting
 
 # datapack output
 /target-datapack/
+/.gradle-user-home/

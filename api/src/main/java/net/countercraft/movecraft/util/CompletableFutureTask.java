@@ -13,7 +13,12 @@ public final class CompletableFutureTask<T> extends CompletableFuture<T> impleme
 
     @Override
     public void run(){
-        this.complete(function.get());
+        try {
+            this.complete(function.get());
+        }
+        catch (Throwable t) {
+            this.completeExceptionally(t);
+        }
     }
 
 

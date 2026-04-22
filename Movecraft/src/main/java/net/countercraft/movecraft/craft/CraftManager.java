@@ -31,13 +31,12 @@ import net.countercraft.movecraft.processing.WorldManager;
 import net.countercraft.movecraft.processing.effects.Effect;
 import net.countercraft.movecraft.processing.functions.CraftSupplier;
 import net.countercraft.movecraft.processing.tasks.detection.DetectionTask;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -84,7 +83,7 @@ public class CraftManager implements Iterable<Craft>{
      * Map of players to their current craft.
      */
     @NotNull private final ConcurrentMap<Player, PlayerCraft> playerCrafts = new ConcurrentHashMap<>();
-    @NotNull private final ConcurrentMap<Craft, BukkitTask> releaseEvents = new ConcurrentHashMap<>();
+    @NotNull private final ConcurrentMap<Craft, FoliaScheduler.TaskHandle> releaseEvents = new ConcurrentHashMap<>();
     /**
      * Set of all craft types on the server.
      */
@@ -103,16 +102,9 @@ public class CraftManager implements Iterable<Craft>{
         File craftsFile = new File(Movecraft.getInstance().getDataFolder().getAbsolutePath() + "/types");
 
         if (craftsFile.mkdirs()) {
-            Movecraft.getInstance().saveResource("types/Airship.craft", false);
-            Movecraft.getInstance().saveResource("types/Airskiff.craft", false);
-            Movecraft.getInstance().saveResource("types/BigAirship.craft", false);
-            Movecraft.getInstance().saveResource("types/BigSubAirship.craft", false);
-            Movecraft.getInstance().saveResource("types/Elevator.craft", false);
-            Movecraft.getInstance().saveResource("types/LaunchTorpedo.craft", false);
-            Movecraft.getInstance().saveResource("types/Ship.craft", false);
-            Movecraft.getInstance().saveResource("types/SubAirship.craft", false);
-            Movecraft.getInstance().saveResource("types/Submarine.craft", false);
-            Movecraft.getInstance().saveResource("types/Turret.craft", false);
+            Movecraft.getInstance().saveResource("types/Battleship.craft", false);
+            Movecraft.getInstance().saveResource("types/Cruiser.craft", false);
+            Movecraft.getInstance().saveResource("types/Gunboat.craft", false);
         }
 
         Set<CraftType> craftTypes = new HashSet<>();
@@ -264,13 +256,14 @@ public class CraftManager implements Iterable<Craft>{
         if (p != null) {
             p.sendMessage(I18nSupport.getInternationalisedString("Release - Player has left craft"));
         }
-        BukkitTask releaseTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                release(c, CraftReleaseEvent.Reason.PLAYER, false);
-                // I'm aware this is not ideal, but you shouldn't be using this anyways.
-            }
-        }.runTaskLater(Movecraft.getInstance(), (20 * 15));
+        FoliaScheduler.TaskHandle releaseTask = FoliaScheduler.runGlobalLater(
+                Movecraft.getInstance(),
+                () -> {
+                    release(c, CraftReleaseEvent.Reason.PLAYER, false);
+                    // I'm aware this is not ideal, but you shouldn't be using this anyways.
+                },
+                (20 * 15)
+        );
         releaseEvents.put(c, releaseTask);
 
     }

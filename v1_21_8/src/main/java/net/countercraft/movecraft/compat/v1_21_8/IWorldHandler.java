@@ -286,10 +286,6 @@ public class IWorldHandler extends WorldHandler {
         }
         tile.setLevel(nativeWorld);
         tile.clearRemoved();
-        if (nativeWorld.captureBlockStates) {
-            nativeWorld.capturedTileEntities.put(newPosition, tile);
-            return;
-        }
         chunk.setBlockEntity(tile);
         chunk.blockEntities.put(newPosition, tile);
     }

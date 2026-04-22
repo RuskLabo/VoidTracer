@@ -26,6 +26,7 @@ import net.countercraft.movecraft.mapUpdater.update.EntityUpdateCommand;
 import net.countercraft.movecraft.mapUpdater.update.ExplosionUpdateCommand;
 import net.countercraft.movecraft.mapUpdater.update.ItemDropUpdateCommand;
 import net.countercraft.movecraft.mapUpdater.update.UpdateCommand;
+import net.countercraft.movecraft.processing.WorldManager;
 import net.countercraft.movecraft.util.Tags;
 import net.countercraft.movecraft.util.hitboxes.HitBox;
 import net.countercraft.movecraft.util.hitboxes.MutableHitBox;
@@ -45,6 +46,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -102,7 +104,7 @@ public class TranslationTask extends AsyncTask {
         }
         //call event
         final CraftPreTranslateEvent preTranslateEvent = new CraftPreTranslateEvent(craft, dx, dy, dz, world);
-        Bukkit.getServer().getPluginManager().callEvent(preTranslateEvent);
+        submitSyncEvent(preTranslateEvent);
         if (preTranslateEvent.isCancelled()) {
             fail(preTranslateEvent.getFailMessage(), preTranslateEvent.isPlayingFailSound());
             return;
@@ -235,7 +237,7 @@ public class TranslationTask extends AsyncTask {
         }
         //call event
         CraftTranslateEvent translateEvent = new CraftTranslateEvent(craft, oldHitBox, newHitBox, world);
-        Bukkit.getServer().getPluginManager().callEvent(translateEvent);
+        submitSyncEvent(translateEvent);
         if (translateEvent.isCancelled()) {
             fail(translateEvent.getFailMessage(), translateEvent.isPlayingFailSound());
             return;
@@ -300,7 +302,7 @@ public class TranslationTask extends AsyncTask {
                 if (!oldLocation.getBlock().getType().isAir()) {
                     CraftCollisionExplosionEvent e = new CraftCollisionExplosionEvent(craft,
                             newLocation, craft.getWorld());
-                    Bukkit.getServer().getPluginManager().callEvent(e);
+                    submitSyncEvent(e);
                     if (!e.isCancelled()) {
                         updates.add(new ExplosionUpdateCommand(newLocation, explosionForce, incendiary));
                         collisionExplosion = true;
@@ -327,7 +329,7 @@ public class TranslationTask extends AsyncTask {
         }
 
         if (!collisionBox.isEmpty()) {
-            Bukkit.getServer().getPluginManager().callEvent(new CraftCollisionEvent(craft, collisionBox, world));
+            submitSyncEvent(new CraftCollisionEvent(craft, collisionBox, world));
         }
 
         updates.add(new CraftTranslateCommand(craft, new MovecraftLocation(dx, dy, dz), world));
@@ -360,7 +362,7 @@ public class TranslationTask extends AsyncTask {
         )) {
             if ((entity.getType() == EntityType.PLAYER && !(craft instanceof SinkingCraft))) {
                 CraftTeleportEntityEvent e = new CraftTeleportEntityEvent(craft, entity);
-                Bukkit.getServer().getPluginManager().callEvent(e);
+                submitSyncEvent(e);
                 if (e.isCancelled())
                     continue;
 
@@ -376,7 +378,7 @@ public class TranslationTask extends AsyncTask {
             }
 
             CraftTeleportEntityEvent e = new CraftTeleportEntityEvent(craft, entity);
-            Bukkit.getServer().getPluginManager().callEvent(e);
+            submitSyncEvent(e);
             if (e.isCancelled())
                 continue;
 
@@ -604,7 +606,7 @@ public class TranslationTask extends AsyncTask {
 
             //call event
             final ItemHarvestEvent harvestEvent = new ItemHarvestEvent(craft, drops, harvestedBlock.toBukkit(craft.getWorld()));
-            Bukkit.getServer().getPluginManager().callEvent(harvestEvent);
+            submitSyncEvent(harvestEvent);
             for (ItemStack drop : drops) {
                 ItemStack retStack = putInToChests(drop, chests);
                 if (retStack != null)
@@ -747,6 +749,20 @@ public class TranslationTask extends AsyncTask {
 
         }
         return stack;
+    }
+
+    private <T extends Event> T submitSyncEvent(T event) {
+        MovecraftLocation midpoint = oldHitBox.getMidPoint();
+        WorldManager.INSTANCE.executeRegion(
+                craft.getWorld(),
+                midpoint.getX() >> 4,
+                midpoint.getZ() >> 4,
+                () -> {
+                    Bukkit.getServer().getPluginManager().callEvent(event);
+                    return null;
+                }
+        );
+        return event;
     }
 
     private MovecraftLocation surfaceLoc(MovecraftLocation ml) {

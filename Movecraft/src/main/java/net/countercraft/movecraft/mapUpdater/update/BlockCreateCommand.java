@@ -3,6 +3,7 @@ package net.countercraft.movecraft.mapUpdater.update;
 import net.countercraft.movecraft.Movecraft;
 import net.countercraft.movecraft.MovecraftLocation;
 import net.countercraft.movecraft.craft.Craft;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -41,6 +42,19 @@ public class BlockCreateCommand extends UpdateCommand {
     @Override
     @SuppressWarnings("deprecation")
     public void doUpdate() {
+        int chunkX = newBlockLocation.getX() >> 4;
+        int chunkZ = newBlockLocation.getZ() >> 4;
+        if (!FoliaScheduler.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    world,
+                    chunkX,
+                    chunkZ,
+                    this::doUpdate
+            );
+            return;
+        }
+
         // now do the block updates, move entities when you set the block they are on
         Movecraft.getInstance().getWorldHandler().setBlockFast(newBlockLocation.toBukkit(world), data);
         //craft.incrementBlockUpdates();

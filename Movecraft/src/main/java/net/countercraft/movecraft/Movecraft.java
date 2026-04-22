@@ -36,8 +36,8 @@ import net.countercraft.movecraft.mapUpdater.MapUpdateManager;
 import net.countercraft.movecraft.processing.WorldManager;
 import net.countercraft.movecraft.sign.*;
 import net.countercraft.movecraft.util.BukkitTeleport;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import net.countercraft.movecraft.util.Tags;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -73,7 +73,7 @@ public class Movecraft extends JavaPlugin {
     public void onEnable() {
         // Read in config
         Settings.LOCALE = getConfig().getString("Locale");
-        Settings.Debug = getConfig().getBoolean("Debug", false);
+        Settings.Debug = getConfig().getBoolean("Debug", getConfig().getBoolean("debug", false));
         Settings.DisableNMSCompatibilityCheck = getConfig().getBoolean("IReallyKnowWhatIAmDoing", false);
         Settings.DisableSpillProtection = getConfig().getBoolean("DisableSpillProtection", false);
         Settings.DisableIceForm = getConfig().getBoolean("DisableIceForm", true);
@@ -187,13 +187,14 @@ public class Movecraft extends JavaPlugin {
 
         // Startup procedure
         boolean datapackInitialized = isDatapackEnabled() || initializeDatapack();
+        WorldManager.INSTANCE.setPlugin(this);
         asyncManager = new AsyncManager();
-        asyncManager.runTaskTimer(this, 0, 1);
-        MapUpdateManager.getInstance().runTaskTimer(this, 0, 1);
+        FoliaScheduler.runGlobalTimer(this, asyncManager::run, 0, 1);
+        FoliaScheduler.runGlobalTimer(this, MapUpdateManager.getInstance()::run, 0, 1);
 
 
         CraftManager.initialize(datapackInitialized);
-        Bukkit.getScheduler().runTaskTimer(this, WorldManager.INSTANCE::run, 0,1);
+        FoliaScheduler.runGlobalTimer(this, WorldManager.INSTANCE::run, 0, 1);
         wreckManager = new WreckManager(WorldManager.INSTANCE);
 
         getServer().getPluginManager().registerEvents(new InteractListener(), this);
@@ -231,13 +232,13 @@ public class Movecraft extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CraftReleaseListener(), this);
 
         var contactsManager = new ContactsManager();
-        contactsManager.runTaskTimerAsynchronously(this, 0, 20);
+        FoliaScheduler.runAsyncTimer(this, contactsManager::run, 0, 20);
         getServer().getPluginManager().registerEvents(contactsManager, this);
         getServer().getPluginManager().registerEvents(new ContactsSign(), this);
         getCommand("contacts").setExecutor(new ContactsCommand());
 
         var statusManager = new StatusManager();
-        statusManager.runTaskTimerAsynchronously(this, 0, 1);
+        FoliaScheduler.runAsyncTimer(this, statusManager::run, 0, 1);
         getServer().getPluginManager().registerEvents(statusManager, this);
         getServer().getPluginManager().registerEvents(new StatusSign(), this);
 
@@ -293,7 +294,6 @@ public class Movecraft extends JavaPlugin {
         }
         logger.info("Saved default Movecraft datapack.");
 
-        getServer().dispatchCommand(getServer().createCommandSender(response -> {}), "datapack list"); // list datapacks to trigger the server to check
         for (Datapack datapack : getServer().getDatapackManager().getPacks()) {
             if (!datapack.getName().equals("file/movecraft-data.zip"))
                 continue;
@@ -314,7 +314,6 @@ public class Movecraft extends JavaPlugin {
     }
 
     private boolean isDatapackEnabled() {
-        getServer().dispatchCommand(getServer().createCommandSender(response -> {}), "datapack list"); // list datapacks to trigger the server to check
         for (Datapack datapack : getServer().getDatapackManager().getPacks()) {
             if (!datapack.getName().equals("file/movecraft-data.zip"))
                 continue;

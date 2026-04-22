@@ -18,7 +18,7 @@
 package net.countercraft.movecraft.mapUpdater.update;
 
 import net.countercraft.movecraft.Movecraft;
-import net.countercraft.movecraft.util.ReflectUtils;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -83,7 +83,25 @@ public class EntityUpdateCommand extends UpdateCommand {
 
     @Override
     public void doUpdate() {
-        Location location = entity.getLocation().add(x, y, z);
+        Location current = entity.getLocation();
+        World currentWorld = current.getWorld();
+        if (currentWorld == null) {
+            return;
+        }
+        int currentChunkX = current.getBlockX() >> 4;
+        int currentChunkZ = current.getBlockZ() >> 4;
+        if (!FoliaScheduler.isOwnedByCurrentRegion(currentWorld, currentChunkX, currentChunkZ)) {
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    currentWorld,
+                    currentChunkX,
+                    currentChunkZ,
+                    this::doUpdate
+            );
+            return;
+        }
+
+        Location location = current.add(x, y, z);
         location.setYaw(location.getYaw() + yaw);
         location.setPitch(location.getPitch() + pitch);
         location.setWorld(world);
@@ -93,11 +111,20 @@ public class EntityUpdateCommand extends UpdateCommand {
 
         // Use bukkit teleporting API for changing worlds because it won't be smooth anyway
         if (!(entity instanceof Player) || !entity.getLocation().getWorld().equals(world)) {
-            entity.teleport(location);
+            teleportAsync(entity, location);
             return;
         }
 
         Movecraft.getInstance().getSmoothTeleport().teleport((Player) entity, location);
+    }
+
+    private static void teleportAsync(Entity entity, Location location) {
+        try {
+            entity.getClass().getMethod("teleportAsync", Location.class).invoke(entity, location);
+        }
+        catch (ReflectiveOperationException ignored) {
+            entity.teleport(location);
+        }
     }
 
     @Override

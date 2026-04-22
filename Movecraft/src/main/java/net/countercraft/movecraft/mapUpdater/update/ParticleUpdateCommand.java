@@ -1,6 +1,8 @@
 package net.countercraft.movecraft.mapUpdater.update;
 
+import net.countercraft.movecraft.Movecraft;
 import net.countercraft.movecraft.config.Settings;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -21,6 +23,22 @@ public class ParticleUpdateCommand extends UpdateCommand {
 
     @Override
     public void doUpdate() {
+        if (location.getWorld() == null) {
+            return;
+        }
+        int chunkX = location.getBlockX() >> 4;
+        int chunkZ = location.getBlockZ() >> 4;
+        if (!FoliaScheduler.isOwnedByCurrentRegion(location.getWorld(), chunkX, chunkZ)) {
+            FoliaScheduler.runRegionNow(
+                    Movecraft.getInstance(),
+                    location.getWorld(),
+                    chunkX,
+                    chunkZ,
+                    this::doUpdate
+            );
+            return;
+        }
+
         // put in smoke or effects
         if (smokeStrength == 1) {
             location.getWorld().playEffect(location, Effect.SMOKE, 4);
