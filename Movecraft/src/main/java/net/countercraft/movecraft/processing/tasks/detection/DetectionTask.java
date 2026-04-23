@@ -29,6 +29,7 @@ import net.countercraft.movecraft.processing.tasks.detection.validators.SizeVali
 import net.countercraft.movecraft.processing.tasks.detection.validators.WaterContactValidator;
 import net.countercraft.movecraft.util.AtomicLocationSet;
 import net.countercraft.movecraft.util.CollectionUtils;
+import net.countercraft.movecraft.util.Counter;
 import net.countercraft.movecraft.util.SupportUtils;
 import net.countercraft.movecraft.util.Tags;
 import net.countercraft.movecraft.util.FoliaScheduler;
@@ -222,6 +223,15 @@ public class DetectionTask implements Supplier<Effect> {
         craft.setHitBox(hitbox);
         craft.setFluidLocations(new BitmapHitBox(fluid));
         craft.setOrigBlockCount(craft.getHitBox().size());
+
+        // Populate Craft.MATERIALS immediately so speed/weight calculations
+        // (which depend on redstone block counts) work before StatusManager
+        // runs its first SinkCheckTicks cycle (~5s after detect).
+        Counter<Material> initialMaterials = new Counter<>();
+        for (Map.Entry<Material, Deque<MovecraftLocation>> e : materials.entrySet()) {
+            initialMaterials.add(e.getKey(), e.getValue().size());
+        }
+        craft.setDataTag(Craft.MATERIALS, initialMaterials);
 
         final CraftDetectEvent event = new CraftDetectEvent(craft, startLocation);
 
