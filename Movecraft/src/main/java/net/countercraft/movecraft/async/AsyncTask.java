@@ -24,12 +24,9 @@ import net.countercraft.movecraft.craft.SinkingCraft;
 import net.countercraft.movecraft.craft.type.CraftType;
 import net.countercraft.movecraft.events.FuelBurnEvent;
 import net.countercraft.movecraft.localisation.I18nSupport;
-import net.countercraft.movecraft.util.Tags;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -59,14 +56,15 @@ public abstract class AsyncTask implements Runnable {
     }
 
     protected boolean checkFuel() {
-        // check for fuel, burn some from a furnace if needed. Blocks of coal are supported, in addition to coal and charcoal
+        // Consume hull-placed fuel blocks (e.g. coal_block). When a fuel block is
+        // burned it is replaced with AIR in-world, making fuel storage a design
+        // concern for the builder. Furnace-inventory fuel is no longer supported.
         double fuelBurnRate = (double) craft.getType().getPerWorldProperty(CraftType.PER_WORLD_FUEL_BURN_RATE, craft.getWorld());
         if (fuelBurnRate == 0.0 || craft instanceof SinkingCraft)
             return true;
 
         if (craft.getBurningFuel() >= fuelBurnRate) {
             double burningFuel = craft.getBurningFuel();
-            // call event
             final FuelBurnEvent event = new FuelBurnEvent(craft, burningFuel, fuelBurnRate);
             Bukkit.getPluginManager().callEvent(event);
             if (event.getBurningFuel() != burningFuel)
@@ -76,71 +74,35 @@ public abstract class AsyncTask implements Runnable {
             craft.setBurningFuel(burningFuel - fuelBurnRate);
             return true;
         }
-        Block fuelHolder = null;
 
         var v = craft.getType().getObjectProperty(CraftType.FUEL_TYPES);
         if (!(v instanceof Map<?, ?>))
             throw new IllegalStateException("FUEL_TYPES must be of type Map");
         var fuelTypes = (Map<?, ?>) v;
-        for (var e : fuelTypes.entrySet()) {
-            if (!(e.getKey() instanceof Material))
-                throw new IllegalStateException("Keys in FUEL_TYPES must be of type Material");
-            if (!(e.getValue() instanceof Double))
-                throw new IllegalStateException("Values in FUEL_TYPES must be of type Double");
-        }
 
-        for (MovecraftLocation bTest : craft.getHitBox()) {
-            Block b = craft.getWorld().getBlockAt(bTest.getX(), bTest.getY(), bTest.getZ());
-            if (Tags.FURNACES.contains(b.getType())) {
-                InventoryHolder inventoryHolder = (InventoryHolder) b.getState();
-                for (ItemStack stack : inventoryHolder.getInventory()) {
-                    if (stack == null || !fuelTypes.containsKey(stack.getType()))
-                        continue;
-                    fuelHolder = b;
-                    break;
-                }
-            }
-        }
-        if (fuelHolder == null) {
-            return false;
-        }
-        InventoryHolder inventoryHolder = (InventoryHolder) fuelHolder.getState();
-        for (ItemStack iStack : inventoryHolder.getInventory()) {
-            if (iStack == null)
+        for (MovecraftLocation loc : craft.getHitBox()) {
+            Block b = craft.getWorld().getBlockAt(loc.getX(), loc.getY(), loc.getZ());
+            Material mat = b.getType();
+            Object fuelVal = fuelTypes.get(mat);
+            if (!(fuelVal instanceof Double))
                 continue;
-            if (!fuelTypes.containsKey(iStack.getType()))
-                continue;
-            double burningFuel = (double) fuelTypes.get(iStack.getType());
-            //call event
+
+            double burningFuel = (double) fuelVal;
             final FuelBurnEvent event = new FuelBurnEvent(craft, burningFuel, fuelBurnRate);
             Bukkit.getPluginManager().callEvent(event);
             if (event.getBurningFuel() != burningFuel)
                 burningFuel = event.getBurningFuel();
             if (event.getFuelBurnRate() != fuelBurnRate)
                 fuelBurnRate = event.getFuelBurnRate();
-            if (burningFuel == 0.0) {
+            if (burningFuel == 0.0)
                 continue;
-            }
-            int amount = iStack.getAmount();
-            int minAmount = 1;
-            if (burningFuel < fuelBurnRate) {
-                minAmount = (int) fuelBurnRate;
-            }
-            if (Tags.BUCKETS.contains(iStack.getType())) {
-                //If buckets are accepted as fuel, replace with an empty bucket
-                iStack.setType(Material.BUCKET);
-            } else if (amount == minAmount) {
-                inventoryHolder.getInventory().remove(iStack);
-            } else if (amount < minAmount) {
-                inventoryHolder.getInventory().remove(iStack);
-                final ItemStack secStack = inventoryHolder.getInventory().getItem(inventoryHolder.getInventory().first(iStack.getType()));
-                secStack.setAmount(secStack.getAmount() - (minAmount - amount));
-            } else {
-                iStack.setAmount(amount - minAmount);
-            }
-            craft.setBurningFuel(craft.getBurningFuel() + burningFuel);
-            break;
+
+            b.setType(Material.AIR);
+            // Keep count consistent for downstream speed/weight calculations.
+            craft.getDataTag(net.countercraft.movecraft.craft.Craft.MATERIALS).add(mat, -1);
+            craft.setBurningFuel(craft.getBurningFuel() + burningFuel - fuelBurnRate);
+            return true;
         }
-        return true;
+        return false;
     }
 }
