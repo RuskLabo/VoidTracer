@@ -14,7 +14,9 @@ repositories {
 }
 
 group = "net.countercraft"
-version = "8.0.0_beta-6"
+// DevBuilds publish as -SNAPSHOT; override with -Prelease=true for tagged releases.
+val isRelease = (findProperty("release") as String?)?.toBoolean() ?: false
+version = if (isRelease) "8.0.0_beta-6" else "8.0.0_beta-6-SNAPSHOT"
 
 tasks.withType<JavaCompile>() {
     options.encoding = "UTF-8"

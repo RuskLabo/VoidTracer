@@ -64,7 +64,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/apdevteam/movecraft")
+            url = uri("https://maven.pkg.github.com/rusklabo/voidtracer")
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")
