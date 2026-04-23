@@ -110,6 +110,8 @@ cruiseSpeed: 0.5
 fuelBurnRate: 2.0
 sinkPercent: 99.0
 overallSinkPercent: 60.0
+redstoneSpeedBoost: 0.05
+speedWeightFactor: 0.0002
 tryNudge: false
 canStaticMove: true
 maxStaticMove: 2

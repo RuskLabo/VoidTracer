@@ -332,89 +332,13 @@ public abstract class BaseCraft implements Craft {
         if (this instanceof SinkingCraft)
             return type.getIntProperty(CraftType.SINK_RATE_TICKS);
 
-        Counter<Material> materials = getDataTag(Craft.MATERIALS);
-
-        int chestPenalty = 0;
-        if (!materials.isEmpty()) {
-            for (Material m : Tags.CHESTS) {
-                chestPenalty += materials.get(m);
-            }
-        }
-        chestPenalty *= (int) type.getDoubleProperty(CraftType.CHEST_PENALTY);
-        if (!cruising)
-            return ((int) type.getPerWorldProperty(CraftType.PER_WORLD_TICK_COOLDOWN, w) + chestPenalty) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
-
-        // Ascent or Descent
-        if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN)
-            return ((int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_TICK_COOLDOWN, w) + chestPenalty) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
-
-        // Dynamic Speed Weight & Redstone Boost
-        double boostFactor = type.getDoubleProperty(CraftType.REDSTONE_SPEED_BOOST);
-        double weightFactor = type.getDoubleProperty(CraftType.SPEED_WEIGHT_FACTOR);
-        if (boostFactor != 0 || weightFactor != 0) {
-            double baseSpeed = 20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1.0) / (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
-            double redstoneCount = materials.get(Material.REDSTONE_BLOCK);
-            double totalBlocks = hitBox.size();
-
-            double speed = baseSpeed + (redstoneCount * boostFactor) - (totalBlocks * weightFactor);
-            speed = Math.max(0.1, speed); // 最低速度を保証
-
-            return Math.max((int) Math.round((20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1)) / speed) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1), 1);
-        }
-
-        // Dynamic Fly Block Speed
-
-        int cruiseTickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
-        if (type.getDoubleProperty(CraftType.DYNAMIC_FLY_BLOCK_SPEED_FACTOR) != 0) {
-            if (materials.isEmpty()) {
-                return ((int) type.getPerWorldProperty(CraftType.PER_WORLD_TICK_COOLDOWN, w) + chestPenalty) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
-            }
-            EnumSet<Material> flyBlockMaterials = type.getMaterialSetProperty(CraftType.DYNAMIC_FLY_BLOCK);
-            double count = 0;
-            for (Material m : flyBlockMaterials) {
-                count += materials.get(m);
-            }
-            double ratio = count / hitBox.size();
-            double speed = (type.getDoubleProperty(CraftType.DYNAMIC_FLY_BLOCK_SPEED_FACTOR) * 1.5)
-                    * (ratio - 0.5)
-                        + (20.0 / cruiseTickCooldown) + 1;
-            return Math.max((int) Math.round((20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1)) / speed) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1), 1);
-        }
-
-        if (type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) == 0.0
-                || type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR) == 0.0
-                || Math.abs(type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR)) > 1.0)
-            return (cruiseTickCooldown + chestPenalty) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
-
+        double speed = getSpeed();
         int cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w);
-        if (stats.getCount() == 0) {
-            if (Settings.Debug) {
-                Bukkit.getLogger().info("First cruise: ");
-                Bukkit.getLogger().info("\t- Skip: " + cruiseSkipBlocks);
-                Bukkit.getLogger().info("\t- Tick: " + cruiseTickCooldown);
-                Bukkit.getLogger().info("\t- MinSpeed: " + type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED));
-                Bukkit.getLogger().info("\t- Gearshifts: " + (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1));
-                Bukkit.getLogger().info("\t- Cooldown: " + (int) Math.round(20.0 * ((cruiseSkipBlocks + 1.0) / type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED)) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1)));
-            }
-            return (int) Math.round(20.0 * ((cruiseSkipBlocks + 1.0) / type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED)) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1));
+        if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
+            cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w);
         }
 
-        if (Settings.Debug) {
-            Bukkit.getLogger().info("Cruise: ");
-            Bukkit.getLogger().info("\t- Skip: " + cruiseSkipBlocks);
-            Bukkit.getLogger().info("\t- Tick: " + cruiseTickCooldown);
-            Bukkit.getLogger().info("\t- SpeedFactor: " + type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR));
-            Bukkit.getLogger().info("\t- PowerFactor: " + type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR));
-            Bukkit.getLogger().info("\t- MinSpeed: " + type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED));
-            Bukkit.getLogger().info("\t- CruiseTime: " + getMeanCruiseTime() * 1000.0 + "ms");
-        }
-
-        // Dynamic Lag Speed
-        double speed = 20.0 * (cruiseSkipBlocks + 1.0) / (float) cruiseTickCooldown;
-        speed -= type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) * Math.pow(getMeanCruiseTime() * 1000.0, type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR));
-        speed = Math.max(type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED), speed);
-        return (int) Math.round((20.0 * (cruiseSkipBlocks + 1.0)) / speed) * (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN) ? currentGear : 1);
-        //In theory, the chest penalty is not needed for a DynamicLag craft.
+        return Math.max(1, (int) Math.round((20.0 * (cruiseSkipBlocks + 1.0)) / speed));
     }
 
     /**
@@ -424,12 +348,43 @@ public abstract class BaseCraft implements Craft {
      */
     @Override
     public double getSpeed() {
+        Counter<Material> materials = getDataTag(Craft.MATERIALS);
+        int cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w);
+        int cruiseTickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
+
+        double speed;
         if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
-            return 20 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w) + 1) / (double) getTickCooldown();
+            speed = 20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w) + 1.0) / (int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_TICK_COOLDOWN, w);
+        } else {
+            speed = 20.0 * (cruiseSkipBlocks + 1.0) / (float) cruiseTickCooldown;
         }
-        else {
-            return 20 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1) / (double) getTickCooldown();
+
+        // Apply Dynamic Lag Speed if cruising
+        if (cruising && cruiseDirection != CruiseDirection.UP && cruiseDirection != CruiseDirection.DOWN) {
+            if (type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) != 0.0) {
+                speed -= type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) * Math.pow(getMeanCruiseTime() * 1000.0, type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR));
+                speed = Math.max(type.getDoubleProperty(CraftType.DYNAMIC_LAG_MIN_SPEED), speed);
+            }
         }
+
+        // Apply Dynamic Redstone Speed & Weight Penalty
+        double boost = type.getDoubleProperty(CraftType.REDSTONE_SPEED_BOOST);
+        double weightFactor = type.getDoubleProperty(CraftType.SPEED_WEIGHT_FACTOR);
+
+        if (boost != 0 || weightFactor != 0) {
+            double redstoneCount = materials.get(Material.REDSTONE_BLOCK);
+            double totalBlocks = hitBox.size();
+
+            speed = speed + (redstoneCount * boost) - (totalBlocks * weightFactor);
+            speed = Math.max(0.1, speed);
+        }
+
+        // Gear shift affects speed
+        if (type.getBoolProperty(CraftType.GEAR_SHIFTS_AFFECT_TICK_COOLDOWN)) {
+            speed /= currentGear;
+        }
+
+        return speed;
     }
 
     @Override
