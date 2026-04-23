@@ -459,8 +459,11 @@ final public class CraftType {
                 type -> (int) Math.ceil(20 / type.getDoubleProperty(SINK_SPEED))));
         registerProperty(new BooleanProperty("keepMovingOnSink", KEEP_MOVING_ON_SINK, type -> false));
         registerProperty(new IntegerProperty("smokeOnSink", SMOKE_ON_SINK, type -> 0));
-        registerProperty(new FloatProperty("explodeOnCrash", EXPLODE_ON_CRASH, type -> 0F));
-        registerProperty(new BooleanProperty("incendiaryOnCrash", INCENDIARY_ON_CRASH, type -> false));
+        // 墜落時の大爆発をデフォルト有効化 (TNT相当の威力 + 発火)。
+        // craft 個別の yaml で explodeOnCrash / incendiaryOnCrash を明示設定
+        // すればそちらが優先される。
+        registerProperty(new FloatProperty("explodeOnCrash", EXPLODE_ON_CRASH, type -> 4F));
+        registerProperty(new BooleanProperty("incendiaryOnCrash", INCENDIARY_ON_CRASH, type -> true));
         registerProperty(new FloatProperty("collisionExplosion", COLLISION_EXPLOSION, type -> 0F));
         registerProperty(new FloatProperty("underwaterCollisionExplosion", UNDERWATER_COLLISION_EXPLOSION, type -> type.getFloatProperty(COLLISION_EXPLOSION)));
         registerProperty(new IntegerProperty("minHeightLimit", MIN_HEIGHT_LIMIT, type -> Integer.MIN_VALUE));
