@@ -178,10 +178,17 @@ public class AsyncManager {
             boolean cr = craft.getCruising();
             if (cr) cruisingCount++;
             if (net.countercraft.movecraft.config.Settings.Debug && cr) {
+                int dbgCd = craft.getTickCooldown();
+                double dbgSp = craft.getSpeed();
+                int dbgRed = craft.getDataTag(net.countercraft.movecraft.craft.Craft.MATERIALS)
+                        .get(org.bukkit.Material.REDSTONE_BLOCK);
+                int dbgHb = craft.getHitBox().size();
                 Movecraft.getInstance().getLogger().info(
                     "[CruiseDbg] craft cruising=true processing=" + (!np)
                     + " dir=" + craft.getCruiseDirection()
-                    + " lastUpd=" + (System.currentTimeMillis() - craft.getLastCruiseUpdate()) + "ms ago");
+                    + " lastUpd=" + (System.currentTimeMillis() - craft.getLastCruiseUpdate()) + "ms ago"
+                    + " tickCd=" + dbgCd + " speed=" + String.format("%.2f", dbgSp)
+                    + " redstone=" + dbgRed + " hitBox=" + dbgHb);
             }
             if (!np || !cr)
                 continue;
