@@ -333,33 +333,42 @@ public abstract class BaseCraft implements Craft {
             return type.getIntProperty(CraftType.SINK_RATE_TICKS);
 
         double speed = getSpeed();
-        int cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w);
-        if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
-            cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w);
+
+        int blocksPerStep;
+        if (!cruising) {
+            blocksPerStep = 1;
+        } else if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
+            blocksPerStep = (int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w) + 1;
+        } else {
+            blocksPerStep = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w) + 1;
         }
 
-        return Math.max(1, (int) Math.round((20.0 * (cruiseSkipBlocks + 1.0)) / speed));
+        return Math.max(1, (int) Math.round(20.0 * blocksPerStep / speed));
     }
 
     /**
-     * gets the speed of a craft in blocks per second.
+     * gets the speed of a craft in blocks per second, factoring in cruise
+     * direction, dynamic-lag, and redstone/weight modifiers.
      *
      * @return the speed of the craft
      */
     @Override
     public double getSpeed() {
         Counter<Material> materials = getDataTag(Craft.MATERIALS);
-        int cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w);
-        int cruiseTickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
 
         double speed;
-        if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
+        if (!cruising) {
+            int tickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_TICK_COOLDOWN, w);
+            speed = 20.0 / tickCooldown;
+        } else if (cruiseDirection == CruiseDirection.UP || cruiseDirection == CruiseDirection.DOWN) {
             speed = 20.0 * ((int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_SKIP_BLOCKS, w) + 1.0) / (int) type.getPerWorldProperty(CraftType.PER_WORLD_VERT_CRUISE_TICK_COOLDOWN, w);
         } else {
+            int cruiseSkipBlocks = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, w);
+            int cruiseTickCooldown = (int) type.getPerWorldProperty(CraftType.PER_WORLD_CRUISE_TICK_COOLDOWN, w);
             speed = 20.0 * (cruiseSkipBlocks + 1.0) / (float) cruiseTickCooldown;
         }
 
-        // Apply Dynamic Lag Speed if cruising
+        // Apply Dynamic Lag Speed if cruising horizontally
         if (cruising && cruiseDirection != CruiseDirection.UP && cruiseDirection != CruiseDirection.DOWN) {
             if (type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) != 0.0) {
                 speed -= type.getDoubleProperty(CraftType.DYNAMIC_LAG_SPEED_FACTOR) * Math.pow(getMeanCruiseTime() * 1000.0, type.getDoubleProperty(CraftType.DYNAMIC_LAG_POWER_FACTOR));
@@ -367,7 +376,7 @@ public abstract class BaseCraft implements Craft {
             }
         }
 
-        // Apply Dynamic Redstone Speed & Weight Penalty
+        // Apply Dynamic Redstone Speed & Weight Penalty (both cruise and non-cruise)
         double boost = type.getDoubleProperty(CraftType.REDSTONE_SPEED_BOOST);
         double weightFactor = type.getDoubleProperty(CraftType.SPEED_WEIGHT_FACTOR);
 
