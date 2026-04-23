@@ -80,29 +80,38 @@ public abstract class AsyncTask implements Runnable {
             throw new IllegalStateException("FUEL_TYPES must be of type Map");
         var fuelTypes = (Map<?, ?>) v;
 
+        // Find the highest-Y fuel block in the hull; consume top-down so the
+        // ship loses cargo/topside blocks before its keel.
+        MovecraftLocation targetLoc = null;
+        Material targetMat = null;
         for (MovecraftLocation loc : craft.getHitBox()) {
             Block b = craft.getWorld().getBlockAt(loc.getX(), loc.getY(), loc.getZ());
             Material mat = b.getType();
-            Object fuelVal = fuelTypes.get(mat);
-            if (!(fuelVal instanceof Double))
+            if (!(fuelTypes.get(mat) instanceof Double))
                 continue;
-
-            double burningFuel = (double) fuelVal;
-            final FuelBurnEvent event = new FuelBurnEvent(craft, burningFuel, fuelBurnRate);
-            Bukkit.getPluginManager().callEvent(event);
-            if (event.getBurningFuel() != burningFuel)
-                burningFuel = event.getBurningFuel();
-            if (event.getFuelBurnRate() != fuelBurnRate)
-                fuelBurnRate = event.getFuelBurnRate();
-            if (burningFuel == 0.0)
-                continue;
-
-            b.setType(Material.AIR);
-            // Keep count consistent for downstream speed/weight calculations.
-            craft.getDataTag(net.countercraft.movecraft.craft.Craft.MATERIALS).add(mat, -1);
-            craft.setBurningFuel(craft.getBurningFuel() + burningFuel - fuelBurnRate);
-            return true;
+            if (targetLoc == null || loc.getY() > targetLoc.getY()) {
+                targetLoc = loc;
+                targetMat = mat;
+            }
         }
-        return false;
+        if (targetLoc == null)
+            return false;
+
+        double burningFuel = (double) fuelTypes.get(targetMat);
+        final FuelBurnEvent event = new FuelBurnEvent(craft, burningFuel, fuelBurnRate);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.getBurningFuel() != burningFuel)
+            burningFuel = event.getBurningFuel();
+        if (event.getFuelBurnRate() != fuelBurnRate)
+            fuelBurnRate = event.getFuelBurnRate();
+        if (burningFuel == 0.0)
+            return false;
+
+        craft.getWorld().getBlockAt(targetLoc.getX(), targetLoc.getY(), targetLoc.getZ())
+                .setType(Material.AIR);
+        // Keep count consistent for downstream speed/weight calculations.
+        craft.getDataTag(net.countercraft.movecraft.craft.Craft.MATERIALS).add(targetMat, -1);
+        craft.setBurningFuel(craft.getBurningFuel() + burningFuel - fuelBurnRate);
+        return true;
     }
 }

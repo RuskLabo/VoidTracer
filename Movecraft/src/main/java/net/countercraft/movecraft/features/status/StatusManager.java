@@ -23,8 +23,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
@@ -70,8 +68,8 @@ public class StatusManager extends BukkitRunnable implements Listener {
             Counter<Material> materials = new Counter<>();
             int nonNegligibleBlocks = 0;
             int nonNegligibleSolidBlocks = 0;
-            double fuel = 0;
-            
+            double fuel = craft.getBurningFuel();
+
             for (MovecraftLocation l : craft.getHitBox()) {
                 Material type = craft.getMovecraftWorld().getMaterial(l);
                 materials.add(type);
@@ -83,13 +81,9 @@ public class StatusManager extends BukkitRunnable implements Listener {
                     nonNegligibleSolidBlocks++;
                 }
 
-                if (Tags.FURNACES.contains(type)) {
-                    InventoryHolder inventoryHolder = (InventoryHolder) craft.getMovecraftWorld().getState(l);
-                    for (ItemStack iStack : inventoryHolder.getInventory()) {
-                        if (iStack == null || !fuelTypes.containsKey(iStack.getType()))
-                            continue;
-                        fuel += iStack.getAmount() * fuelTypes.get(iStack.getType());
-                    }
+                Double fuelVal = fuelTypes.get(type);
+                if (fuelVal != null) {
+                    fuel += fuelVal;
                 }
             }
 

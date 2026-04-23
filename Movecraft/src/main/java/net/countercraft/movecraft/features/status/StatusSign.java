@@ -118,9 +118,11 @@ public final class StatusSign implements Listener {
 
         String fuelText = "";
         int cruiseSkipBlocks = (int) craft.getType().getPerWorldProperty(CraftType.PER_WORLD_CRUISE_SKIP_BLOCKS, craft.getWorld());
-        cruiseSkipBlocks++;
         double fuelBurnRate = (double) craft.getType().getPerWorldProperty(CraftType.PER_WORLD_FUEL_BURN_RATE, craft.getWorld());
-        int fuelRange = (int) Math.round((fuel * (1 + cruiseSkipBlocks)) / fuelBurnRate);
+        // range (blocks) = (fuel / burnRate moves) * (skip+1 blocks per move)
+        int fuelRange = fuelBurnRate == 0.0
+                ? 0
+                : (int) Math.round((fuel / fuelBurnRate) * (cruiseSkipBlocks + 1));
         if (fuelRange > 1000) {
             fuelText += ChatColor.GREEN;
         } else if (fuelRange > 100) {
