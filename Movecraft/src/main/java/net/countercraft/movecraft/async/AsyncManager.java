@@ -170,8 +170,20 @@ public class AsyncManager {
     }
 
     private void processCruise() {
+        int total = 0, cruisingCount = 0;
         for (Craft craft : CraftManager.getInstance()) {
-            if (craft == null || !craft.isNotProcessing() || !craft.getCruising())
+            total++;
+            if (craft == null) continue;
+            boolean np = craft.isNotProcessing();
+            boolean cr = craft.getCruising();
+            if (cr) cruisingCount++;
+            if (net.countercraft.movecraft.config.Settings.Debug && cr) {
+                Movecraft.getInstance().getLogger().info(
+                    "[CruiseDbg] craft cruising=true processing=" + (!np)
+                    + " dir=" + craft.getCruiseDirection()
+                    + " lastUpd=" + (System.currentTimeMillis() - craft.getLastCruiseUpdate()) + "ms ago");
+            }
+            if (!np || !cr)
                 continue;
 
             long ticksElapsed = (System.currentTimeMillis() - craft.getLastCruiseUpdate()) / 50;
@@ -287,6 +299,11 @@ public class AsyncManager {
                 dx *= gearshift;
                 dy *= gearshift;
                 dz *= gearshift;
+            }
+            if (net.countercraft.movecraft.config.Settings.Debug) {
+                Movecraft.getInstance().getLogger().info(
+                    "[CruiseDbg] translating dx=" + dx + " dy=" + dy + " dz=" + dz
+                    + " tickCoolDown=" + tickCoolDown + " ticksElapsed=" + ticksElapsed);
             }
             craft.translate(dx, dy, dz);
             craft.setLastTranslation(new MovecraftLocation(dx, dy, dz));
