@@ -141,3 +141,7 @@ flyblocks:
     water: # so is water
         - 0.0
         - 1.0
+
+# 戦列艦: 大型多目的艦。輸送寄りの役割で、絶対火力は高いが密度は低い。
+maxCannons:
+    [classic,ironCannon]: "N16"

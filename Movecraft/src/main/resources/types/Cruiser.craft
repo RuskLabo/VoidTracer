@@ -141,3 +141,7 @@ flyblocks:
     water: # so is water
         - 0.0
         - 1.0
+
+# 巡洋艦: 主力艦。装甲と火力のバランス型で、戦列の中核を担う。
+maxCannons:
+    [classic,ironCannon]: "N6"

@@ -141,3 +141,7 @@ flyblocks:
     water: # so is water
         - 0.0
         - 1.0
+
+# 砲艦: 火力特化の小型艦。装甲は薄いが搭載砲数が多い。
+maxCannons:
+    [classic,ironCannon]: "N12"
