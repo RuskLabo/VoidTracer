@@ -81,10 +81,12 @@ public final class PilotScoreboard implements Listener {
     }
 
     private void updateScoreboard(Player player, Craft craft, int overall, int engine, int wool) {
-        // Scoreboard API requires the global tick thread in Folia
         FoliaScheduler.runGlobalNow(Movecraft.getInstance(), () -> {
             if (!player.isOnline()) return;
-            Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
+            // CraftScoreboardManager.getNewScoreboard() is disabled in Folia 1.21.8;
+            // bypass via ScoreboardFactory which constructs CraftScoreboard via reflection.
+            Scoreboard board = ScoreboardFactory.create();
+            if (board == null) return;
             Objective obj = board.registerNewObjective(
                     OBJECTIVE_NAME,
                     Criteria.DUMMY,
