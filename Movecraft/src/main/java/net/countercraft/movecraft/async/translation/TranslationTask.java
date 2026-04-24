@@ -262,7 +262,7 @@ public class TranslationTask extends AsyncTask {
                 // hits solid terrain — avoids false positives from destroyed-block gaps.
                 float power = craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH);
                 boolean incendiary = craft.getType().getBoolProperty(CraftType.INCENDIARY_ON_CRASH);
-                int explosionCount = Math.max(3, Math.min(10, oldHitBox.size() / 500));
+                int explosionCount = Math.max(6, Math.min(20, oldHitBox.size() / 200));
                 List<Location> solidPoints = new ArrayList<>();
                 for (MovecraftLocation location : collisionBox) {
                     // Skip if the ship block that was here before moving was already air
@@ -275,11 +275,33 @@ public class TranslationTask extends AsyncTask {
                     }
                 }
                 if (!solidPoints.isEmpty()) {
-                    // Spread explosions across the crash front
-                    int step = Math.max(1, solidPoints.size() / explosionCount);
-                    for (int i = 0; i < solidPoints.size() && updates.size() < explosionCount + 1; i += step) {
-                        updates.add(new ExplosionUpdateCommand(solidPoints.get(i), power, incendiary));
+                    // Place explosions distributed across the lower half of the ship hull
+                    // so the crash looks like the whole ship exploding, not just one contact point.
+                    int midY = oldHitBox.getMidPoint().getY();
+                    List<MovecraftLocation> lowerHull = new ArrayList<>();
+                    for (MovecraftLocation ml : oldHitBox) {
+                        if (ml.getY() <= midY) lowerHull.add(ml);
                     }
+                    if (lowerHull.isEmpty()) {
+                        for (MovecraftLocation ml : oldHitBox) lowerHull.add(ml);
+                    }
+                    java.util.Collections.shuffle(lowerHull, ThreadLocalRandom.current());
+
+                    int placed = 0;
+                    int step = Math.max(1, lowerHull.size() / explosionCount);
+                    for (int i = 0; i < lowerHull.size() && placed < explosionCount; i += step) {
+                        Location loc = lowerHull.get(i).toBukkit(craft.getWorld());
+                        if (!loc.getBlock().getType().isAir()) {
+                            updates.add(new ExplosionUpdateCommand(loc, power, incendiary));
+                            placed++;
+                        }
+                    }
+
+                    // Always explode at the actual impact points (stronger)
+                    for (Location impact : solidPoints) {
+                        updates.add(new ExplosionUpdateCommand(impact, power * 1.5f, incendiary));
+                    }
+
                     collisionExplosion = true;
                 }
             }
