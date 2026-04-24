@@ -32,6 +32,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.data.Waterlogged;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -209,6 +210,9 @@ public class CraftTranslateCommand extends UpdateCommand {
             }
 //            waterlog();
         }
+        // Notify ErathApi so EssenceBlockListener's chunk cache stays in sync
+        notifyErathApi(oldWorld);
+
         if (!craft.isNotProcessing())
             craft.setProcessing(false);
         time = System.nanoTime() - time;
@@ -364,6 +368,26 @@ public class CraftTranslateCommand extends UpdateCommand {
                 }
                 sign.update(false, false);
             }
+        }
+    }
+
+    private void notifyErathApi(World oldWorld) {
+        try {
+            Class<?> api = Class.forName("com.ruskserver.erathmc.api.ErathApi");
+            Method method = api.getMethod("onBlocksTranslated", Map.class);
+            Map<Location, Location> translations = new HashMap<>();
+            for (MovecraftLocation newLoc : craft.getHitBox()) {
+                Location newBukkit = newLoc.toBukkit(world);
+                Location oldBukkit = newLoc.subtract(displacement).toBukkit(oldWorld);
+                translations.put(oldBukkit, newBukkit);
+            }
+            if (!translations.isEmpty()) {
+                method.invoke(null, translations);
+            }
+        } catch (ClassNotFoundException ignored) {
+            // erathmc not installed
+        } catch (Exception e) {
+            Movecraft.getInstance().getLogger().warning("[VoidTracer] ErathApi.onBlocksTranslated failed: " + e.getMessage());
         }
     }
 

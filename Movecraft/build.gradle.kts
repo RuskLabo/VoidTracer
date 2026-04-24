@@ -5,7 +5,7 @@ plugins {
     id("io.papermc.hangar-publish-plugin") version "0.1.3"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 dependencies {
     runtimeOnly(project(":movecraft-v1_20_6"))
