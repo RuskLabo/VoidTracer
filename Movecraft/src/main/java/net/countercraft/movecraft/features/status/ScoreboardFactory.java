@@ -21,15 +21,16 @@ final class ScoreboardFactory {
             Method getServer = mcServerClass.getMethod("getServer");
             Object mcServer = getServer.invoke(null);
 
-            // ServerScoreboard(MinecraftServer) — NMS scoreboard
+            // ServerScoreboard(MinecraftServer) — NMS scoreboard (extends net.minecraft.world.scores.Scoreboard)
             Class<?> serverScoreboardClass = Class.forName("net.minecraft.server.ServerScoreboard");
             Constructor<?> nmsCtor = serverScoreboardClass.getDeclaredConstructor(mcServerClass);
             nmsCtor.setAccessible(true);
             Object nmsScoreboard = nmsCtor.newInstance(mcServer);
 
-            // CraftScoreboard(ServerScoreboard) — Bukkit wrapper
+            // CraftScoreboard(net.minecraft.world.scores.Scoreboard) — constructor takes BASE class type
+            Class<?> nmsBaseClass = Class.forName("net.minecraft.world.scores.Scoreboard");
             Class<?> craftScoreboardClass = Class.forName("org.bukkit.craftbukkit.scoreboard.CraftScoreboard");
-            Constructor<?> craftCtor = craftScoreboardClass.getDeclaredConstructor(serverScoreboardClass);
+            Constructor<?> craftCtor = craftScoreboardClass.getDeclaredConstructor(nmsBaseClass);
             craftCtor.setAccessible(true);
             return (Scoreboard) craftCtor.newInstance(nmsScoreboard);
 
