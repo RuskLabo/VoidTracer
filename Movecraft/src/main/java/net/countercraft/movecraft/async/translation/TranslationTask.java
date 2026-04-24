@@ -510,8 +510,17 @@ public class TranslationTask extends AsyncTask {
             }
         }
 
-        if (maxY - testY > perWorldMaxHeighAboveGround)
-            dy = Math.min(dy, -1);
+        if (maxY - testY > perWorldMaxHeighAboveGround) {
+            if (dy > 0) {
+                // Player is actively ascending but already above the limit:
+                // clamp to 0 so the craft stops rising without being forced down.
+                dy = 0;
+            } else {
+                // Horizontal cruise or stationary while above limit:
+                // nudge gently downward to return to allowed height.
+                dy = Math.min(dy, -1);
+            }
+        }
     }
 
     private void fail(@NotNull String failMessage) {
