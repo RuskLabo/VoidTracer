@@ -28,6 +28,7 @@ import net.countercraft.movecraft.features.contacts.ContactsCommand;
 import net.countercraft.movecraft.features.contacts.ContactsManager;
 import net.countercraft.movecraft.features.contacts.ContactsSign;
 import net.countercraft.movecraft.features.fading.WreckManager;
+import net.countercraft.movecraft.features.effects.EngineEffects;
 import net.countercraft.movecraft.features.status.PilotScoreboard;
 import net.countercraft.movecraft.features.status.StatusManager;
 import net.countercraft.movecraft.features.status.StatusSign;
@@ -243,6 +244,7 @@ public class Movecraft extends JavaPlugin {
         getServer().getPluginManager().registerEvents(statusManager, this);
         getServer().getPluginManager().registerEvents(new StatusSign(), this);
         getServer().getPluginManager().registerEvents(new PilotScoreboard(), this);
+        getServer().getPluginManager().registerEvents(new EngineEffects(), this);
 
         logger.info("[V " + getDescription().getVersion() + "] has been enabled.");
     }

@@ -245,6 +245,7 @@ public class TranslationTask extends AsyncTask {
 
         // do not switch world if sinking
         if (craft instanceof SinkingCraft) {
+            // Remove blocks that have already become air (burned away)
             List<MovecraftLocation> air = new ArrayList<>();
             for (MovecraftLocation location : oldHitBox) {
                 if (location.toBukkit(craft.getWorld()).getBlock().getType().isAir()) {
@@ -252,19 +253,31 @@ public class TranslationTask extends AsyncTask {
                 }
             }
             newHitBox.removeAll(air);
-            for (MovecraftLocation location : collisionBox) {
-                if (craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH) > 0F) {
-                    if (System.currentTimeMillis() - craft.getOrigPilotTime() <= 1000) {
-                        continue;
-                    }
+
+            if (!collisionBox.isEmpty()
+                    && craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH) > 0F
+                    && System.currentTimeMillis() - craft.getOrigPilotTime() > 1000) {
+                // Immediate crash: collect solid collision points and fire multiple explosions
+                float power = craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH);
+                boolean incendiary = craft.getType().getBoolProperty(CraftType.INCENDIARY_ON_CRASH);
+                int explosionCount = Math.max(3, Math.min(10, oldHitBox.size() / 500));
+                List<Location> solidPoints = new ArrayList<>();
+                for (MovecraftLocation location : collisionBox) {
                     Location loc = location.toBukkit(craft.getWorld());
-                    if (!loc.getBlock().getType().isAir() && ThreadLocalRandom.current().nextDouble(1) < .05) {
-                        updates.add(new ExplosionUpdateCommand(loc,
-                                craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH),
-                                craft.getType().getBoolProperty(CraftType.INCENDIARY_ON_CRASH)));
-                        collisionExplosion = true;
+                    if (!loc.getBlock().getType().isAir()) {
+                        solidPoints.add(loc);
                     }
                 }
+                // Spread explosions across the crash front
+                int step = Math.max(1, solidPoints.size() / explosionCount);
+                for (int i = 0; i < solidPoints.size() && updates.size() < explosionCount + 1; i += step) {
+                    updates.add(new ExplosionUpdateCommand(solidPoints.get(i), power, incendiary));
+                }
+                collisionExplosion = true;
+            }
+
+            // Collapse all blocks that are no longer supported from below
+            for (MovecraftLocation location : collisionBox) {
                 SetHitBox toRemove = new SetHitBox();
                 MovecraftLocation next = location.translate(-dx, -dy, -dz);
                 while (oldHitBox.contains(next)) {

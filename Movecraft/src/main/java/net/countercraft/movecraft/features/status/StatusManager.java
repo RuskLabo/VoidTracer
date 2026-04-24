@@ -26,6 +26,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -69,6 +71,7 @@ public class StatusManager extends BukkitRunnable implements Listener {
             int nonNegligibleBlocks = 0;
             int nonNegligibleSolidBlocks = 0;
             double fuel = craft.getBurningFuel();
+            List<MovecraftLocation> enginePositions = new ArrayList<>(8);
 
             for (MovecraftLocation l : craft.getHitBox()) {
                 Material type = craft.getMovecraftWorld().getMaterial(l);
@@ -84,6 +87,10 @@ public class StatusManager extends BukkitRunnable implements Listener {
                 Double fuelVal = fuelTypes.get(type);
                 if (fuelVal != null) {
                     fuel += fuelVal;
+                }
+
+                if (type == Material.REDSTONE_BLOCK && enginePositions.size() < 8) {
+                    enginePositions.add(l);
                 }
             }
 
@@ -109,6 +116,7 @@ public class StatusManager extends BukkitRunnable implements Listener {
             craft.setDataTag(Craft.MOVEBLOCKS, moveblocks);
             craft.setDataTag(Craft.NON_NEGLIGIBLE_BLOCKS, nonNegligibleBlocks);
             craft.setDataTag(Craft.NON_NEGLIGIBLE_SOLID_BLOCKS, nonNegligibleSolidBlocks);
+            craft.setDataTag(Craft.ENGINE_POSITIONS, enginePositions);
             craft.setDataTag(LAST_STATUS_CHECK, System.currentTimeMillis());
             return () -> Bukkit.getPluginManager().callEvent(new CraftStatusUpdateEvent(craft));
         }

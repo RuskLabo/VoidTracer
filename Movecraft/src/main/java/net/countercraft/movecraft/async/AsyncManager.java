@@ -130,16 +130,27 @@ public class AsyncManager {
                 c.setHitBox(task.getNewHitBox());
                 c.setFluidLocations(task.getNewFluidList());
                 MapUpdateManager.getInstance().scheduleUpdates(task.getUpdates());
-                CraftManager.getInstance().addReleaseTask(c);
+                if (c instanceof SinkingCraft) {
+                    // Crash-landed: queue wreck fade and release immediately
+                    Movecraft.getInstance().getWreckManager().queueWreck(c);
+                    CraftManager.getInstance().release(c, CraftReleaseEvent.Reason.SUNK, false);
+                } else {
+                    CraftManager.getInstance().addReleaseTask(c);
+                }
                 return true;
             }
             return false;
         }
         // The craft is clear to move, perform the block updates
         MapUpdateManager.getInstance().scheduleUpdates(task.getUpdates());
-
         c.setHitBox(task.getNewHitBox());
         c.setFluidLocations(task.getNewFluidList());
+
+        // SinkingCraft crash: translation succeeds (doesn't fail()) but collision triggered
+        if (c instanceof SinkingCraft && task.isCollisionExplosion()) {
+            Movecraft.getInstance().getWreckManager().queueWreck(c);
+            CraftManager.getInstance().release(c, CraftReleaseEvent.Reason.SUNK, false);
+        }
         return true;
     }
 

@@ -52,6 +52,10 @@ public interface Craft {
     CraftDataTagKey<Integer> NON_NEGLIGIBLE_BLOCKS = CraftDataTagRegistry.INSTANCE.registerTagKey(new NamespacedKey("movecraft", "non-negligible-blocks"), Craft::getOrigBlockCount);
     CraftDataTagKey<Integer> NON_NEGLIGIBLE_SOLID_BLOCKS = CraftDataTagRegistry.INSTANCE.registerTagKey(new NamespacedKey("movecraft", "non-negligible-solid-blocks"), Craft::getOrigBlockCount);
     CraftDataTagKey<MovecraftLocation> CRAFT_ORIGIN = CraftDataTagRegistry.INSTANCE.registerTagKey(new NamespacedKey("movecraft", "craft-origin"), craft -> craft.getHitBox().getMidPoint());
+    /** Positions of up to 8 engine (redstone_block) blocks, updated by StatusManager scan. */
+    CraftDataTagKey<List<MovecraftLocation>> ENGINE_POSITIONS = CraftDataTagRegistry.INSTANCE.registerTagKey(new NamespacedKey("movecraft", "engine-positions"), craft -> new ArrayList<>(0));
+    /** Timestamp of last engine particle/sound effect in ms; used for throttling. */
+    CraftDataTagKey<Long> LAST_ENGINE_EFFECT_MS = CraftDataTagRegistry.INSTANCE.registerTagKey(new NamespacedKey("movecraft", "last-engine-effect"), craft -> 0L);
 
     // Java disallows private or protected fields in interfaces, this is a workaround
     class Hidden {
