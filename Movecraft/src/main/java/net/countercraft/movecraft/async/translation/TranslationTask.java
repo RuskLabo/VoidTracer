@@ -257,23 +257,31 @@ public class TranslationTask extends AsyncTask {
             if (!collisionBox.isEmpty()
                     && craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH) > 0F
                     && System.currentTimeMillis() - craft.getOrigPilotTime() > 1000) {
-                // Immediate crash: collect solid collision points and fire multiple explosions
+                // Immediate crash: collect solid collision points and fire multiple explosions.
+                // Only count positions where an actual ship block (not an air hole from damage)
+                // hits solid terrain — avoids false positives from destroyed-block gaps.
                 float power = craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH);
                 boolean incendiary = craft.getType().getBoolProperty(CraftType.INCENDIARY_ON_CRASH);
                 int explosionCount = Math.max(3, Math.min(10, oldHitBox.size() / 500));
                 List<Location> solidPoints = new ArrayList<>();
                 for (MovecraftLocation location : collisionBox) {
+                    // Skip if the ship block that was here before moving was already air
+                    // (i.e. damage-induced hole — ignoreBlock case)
+                    MovecraftLocation preMove = location.translate(-dx, -dy, -dz);
+                    if (preMove.toBukkit(craft.getWorld()).getBlock().getType().isAir()) continue;
                     Location loc = location.toBukkit(craft.getWorld());
                     if (!loc.getBlock().getType().isAir()) {
                         solidPoints.add(loc);
                     }
                 }
-                // Spread explosions across the crash front
-                int step = Math.max(1, solidPoints.size() / explosionCount);
-                for (int i = 0; i < solidPoints.size() && updates.size() < explosionCount + 1; i += step) {
-                    updates.add(new ExplosionUpdateCommand(solidPoints.get(i), power, incendiary));
+                if (!solidPoints.isEmpty()) {
+                    // Spread explosions across the crash front
+                    int step = Math.max(1, solidPoints.size() / explosionCount);
+                    for (int i = 0; i < solidPoints.size() && updates.size() < explosionCount + 1; i += step) {
+                        updates.add(new ExplosionUpdateCommand(solidPoints.get(i), power, incendiary));
+                    }
+                    collisionExplosion = true;
                 }
-                collisionExplosion = true;
             }
 
             // Collapse all blocks that are no longer supported from below
