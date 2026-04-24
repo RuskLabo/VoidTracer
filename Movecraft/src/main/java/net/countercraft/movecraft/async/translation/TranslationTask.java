@@ -55,9 +55,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
@@ -275,18 +277,50 @@ public class TranslationTask extends AsyncTask {
                     }
                 }
                 if (!solidPoints.isEmpty()) {
-                    // Place explosions distributed across the lower half of the ship hull
-                    // so the crash looks like the whole ship exploding, not just one contact point.
-                    int midY = oldHitBox.getMidPoint().getY();
-                    List<MovecraftLocation> lowerHull = new ArrayList<>();
-                    for (MovecraftLocation ml : oldHitBox) {
-                        if (ml.getY() <= midY) lowerHull.add(ml);
+                    // Resolve fuel block materials for this craft type
+                    Set<Material> fuelMaterials = new HashSet<>();
+                    Object fuelObj = craft.getType().getObjectProperty(CraftType.FUEL_TYPES);
+                    if (fuelObj instanceof Map<?, ?> fuelMap) {
+                        for (Object k : fuelMap.keySet()) {
+                            if (k instanceof Material m) fuelMaterials.add(m);
+                        }
                     }
+
+                    // Scan the ship hull for engines, fuel, and general structure
+                    List<Location> engineLocs = new ArrayList<>();
+                    List<Location> fuelLocs   = new ArrayList<>();
+                    List<MovecraftLocation> lowerHull = new ArrayList<>();
+                    int midY = oldHitBox.getMidPoint().getY();
+                    for (MovecraftLocation ml : oldHitBox) {
+                        Location loc = ml.toBukkit(craft.getWorld());
+                        Material type = loc.getBlock().getType();
+                        if (type == Material.REDSTONE_BLOCK) {
+                            engineLocs.add(loc);
+                        } else if (fuelMaterials.contains(type)) {
+                            fuelLocs.add(loc);
+                        }
+                        if (ml.getY() <= midY && !type.isAir()) {
+                            lowerHull.add(ml);
+                        }
+                    }
+
+                    // 1. Engine explosions — biggest (×3)
+                    for (Location engine : engineLocs) {
+                        updates.add(new ExplosionUpdateCommand(engine, power * 3.0f, incendiary));
+                    }
+
+                    // 2. Fuel storage explosions — large (×2, up to 10 blocks)
+                    Collections.shuffle(fuelLocs, ThreadLocalRandom.current());
+                    int fuelLimit = Math.min(fuelLocs.size(), 10);
+                    for (int i = 0; i < fuelLimit; i++) {
+                        updates.add(new ExplosionUpdateCommand(fuelLocs.get(i), power * 2.0f, incendiary));
+                    }
+
+                    // 3. Distributed hull explosions across lower half
                     if (lowerHull.isEmpty()) {
                         for (MovecraftLocation ml : oldHitBox) lowerHull.add(ml);
                     }
-                    java.util.Collections.shuffle(lowerHull, ThreadLocalRandom.current());
-
+                    Collections.shuffle(lowerHull, ThreadLocalRandom.current());
                     int placed = 0;
                     int step = Math.max(1, lowerHull.size() / explosionCount);
                     for (int i = 0; i < lowerHull.size() && placed < explosionCount; i += step) {
@@ -297,7 +331,7 @@ public class TranslationTask extends AsyncTask {
                         }
                     }
 
-                    // Always explode at the actual impact points (stronger)
+                    // 4. Contact point explosions at actual impact (×1.5)
                     for (Location impact : solidPoints) {
                         updates.add(new ExplosionUpdateCommand(impact, power * 1.5f, incendiary));
                     }
