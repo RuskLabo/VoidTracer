@@ -28,6 +28,7 @@ import net.countercraft.movecraft.features.contacts.ContactsCommand;
 import net.countercraft.movecraft.features.contacts.ContactsManager;
 import net.countercraft.movecraft.features.contacts.ContactsSign;
 import net.countercraft.movecraft.features.fading.WreckManager;
+import net.countercraft.movecraft.features.status.PilotScoreboard;
 import net.countercraft.movecraft.features.status.StatusManager;
 import net.countercraft.movecraft.features.status.StatusSign;
 import net.countercraft.movecraft.listener.*;
@@ -241,6 +242,7 @@ public class Movecraft extends JavaPlugin {
         FoliaScheduler.runAsyncTimer(this, statusManager::run, 0, 1);
         getServer().getPluginManager().registerEvents(statusManager, this);
         getServer().getPluginManager().registerEvents(new StatusSign(), this);
+        getServer().getPluginManager().registerEvents(new PilotScoreboard(), this);
 
         logger.info("[V " + getDescription().getVersion() + "] has been enabled.");
     }
