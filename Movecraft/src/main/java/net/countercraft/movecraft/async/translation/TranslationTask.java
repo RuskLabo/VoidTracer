@@ -262,7 +262,7 @@ public class TranslationTask extends AsyncTask {
                 // hits solid terrain — avoids false positives from destroyed-block gaps.
                 float power = craft.getType().getFloatProperty(CraftType.EXPLODE_ON_CRASH);
                 boolean incendiary = craft.getType().getBoolProperty(CraftType.INCENDIARY_ON_CRASH);
-                int explosionCount = Math.max(6, Math.min(20, oldHitBox.size() / 200));
+                int explosionCount = Math.max(12, Math.min(40, oldHitBox.size() / 80));
                 List<Location> solidPoints = new ArrayList<>();
                 for (MovecraftLocation location : collisionBox) {
                     // Skip if the ship block that was here before moving was already air
