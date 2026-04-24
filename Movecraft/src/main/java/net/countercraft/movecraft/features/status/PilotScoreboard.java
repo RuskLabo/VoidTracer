@@ -8,6 +8,7 @@ import net.countercraft.movecraft.events.CraftPilotEvent;
 import net.countercraft.movecraft.events.CraftReleaseEvent;
 import net.countercraft.movecraft.features.status.events.CraftStatusUpdateEvent;
 import net.countercraft.movecraft.util.Counter;
+import net.countercraft.movecraft.util.FoliaScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -80,7 +81,8 @@ public final class PilotScoreboard implements Listener {
     }
 
     private void updateScoreboard(Player player, Craft craft, int overall, int engine, int wool) {
-        player.getScheduler().run(Movecraft.getInstance(), task -> {
+        // Scoreboard API requires the global tick thread in Folia
+        FoliaScheduler.runGlobalNow(Movecraft.getInstance(), () -> {
             if (!player.isOnline()) return;
             Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
             Objective obj = board.registerNewObjective(
@@ -95,17 +97,17 @@ public final class PilotScoreboard implements Listener {
             setLine(obj, ChatColor.AQUA  + "羊毛   " + pctColor(wool)    + wool    + "%", 1);
 
             player.setScoreboard(board);
-        }, null);
+        });
     }
 
     private void clearScoreboard(Player player) {
-        player.getScheduler().run(Movecraft.getInstance(), task -> {
+        FoliaScheduler.runGlobalNow(Movecraft.getInstance(), () -> {
             if (!player.isOnline()) return;
             Scoreboard current = player.getScoreboard();
             if (current.getObjective(OBJECTIVE_NAME) != null) {
                 player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
             }
-        }, null);
+        });
     }
 
     private String pctColor(int pct) {
