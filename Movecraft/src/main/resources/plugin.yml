@@ -7,6 +7,7 @@ website: https://github.com/APDevTeam/Movecraft
 main: net.countercraft.movecraft.Movecraft
 folia-supported: true
 database: false
+softdepend: [Towny]
 commands:
   movecraft:
     description: base movecraft command

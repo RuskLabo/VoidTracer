@@ -7,6 +7,10 @@ plugins {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
+repositories {
+    maven("https://repo.glaremasters.me/repository/towny/")
+}
+
 dependencies {
     runtimeOnly(project(":movecraft-v1_20_6"))
     runtimeOnly(project(":movecraft-v1_21_1"))
@@ -18,6 +22,7 @@ dependencies {
     runtimeOnly(project(":movecraft-v26_1_2"))
     implementation(project(":movecraft-api"))
     compileOnly("org.yaml:snakeyaml:2.0")
+    compileOnly("com.palmergames.bukkit.towny:towny:0.100.4.5")
 }
 
 tasks.shadowJar {

@@ -29,6 +29,7 @@ import net.countercraft.movecraft.features.contacts.ContactsManager;
 import net.countercraft.movecraft.features.contacts.ContactsSign;
 import net.countercraft.movecraft.features.fading.WreckManager;
 import net.countercraft.movecraft.features.effects.EngineEffects;
+import net.countercraft.movecraft.features.integration.TownyIntegration;
 import net.countercraft.movecraft.features.status.PilotScoreboard;
 import net.countercraft.movecraft.features.status.StatusManager;
 import net.countercraft.movecraft.features.status.StatusSign;
@@ -245,6 +246,12 @@ public class Movecraft extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new StatusSign(), this);
         getServer().getPluginManager().registerEvents(new PilotScoreboard(), this);
         getServer().getPluginManager().registerEvents(new EngineEffects(), this);
+
+        // Soft-depend Towny integration: only register if Towny is present
+        if (getServer().getPluginManager().getPlugin("Towny") != null) {
+            getServer().getPluginManager().registerEvents(new TownyIntegration(), this);
+            logger.info("[Towny] Integration enabled — craft detection will respect town residency.");
+        }
 
         logger.info("[V " + getDescription().getVersion() + "] has been enabled.");
     }
