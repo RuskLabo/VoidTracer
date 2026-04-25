@@ -35,7 +35,7 @@ public final class TownyIntegration implements Listener {
         if (player == null) return;
         if (player.hasPermission("movecraft.bypass.towny")) return;
 
-        Resident resident = TownyAPI.getInstance().getResidentOrNull(player);
+        Resident resident = TownyAPI.getInstance().getResident(player);
         World world = craft.getWorld();
 
         // Sample by chunk (16x16) — Towny claims are chunk-granular, so per-chunk
